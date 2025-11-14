@@ -1,0 +1,10 @@
+fastapi==0.109.0
+uvicorn==0.27.0
+faker==22.6.0
+scikit-learn==1.4.0
+numpy==1.26.3
+pandas==2.2.0
+supabase==2.3.4
+python-dotenv==1.0.1
+apscheduler==3.10.4
+pydantic==2.5.3
