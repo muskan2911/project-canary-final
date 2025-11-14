@@ -14,6 +14,10 @@ PRODUCTS = [
 STATUSES = ['Open', 'In Progress', 'Resolved', 'Closed']
 GEOGRAPHIES = ['North America', 'Europe', 'Asia Pacific', 'Latin America', 'Middle East', 'Africa']
 
+VERB = [
+    "login", "checkout", "submit", "update", "delete", "create", "view", "export", "import", "sync", "connect"
+]
+
 ISSUE_TEMPLATES = [
     "Unable to login to the system. Getting error message: {error}",
     "Payment processing failed for transaction {id}. Customer is unable to complete checkout.",
@@ -57,7 +61,7 @@ def generate_fake_case(index: int) -> dict:
         endpoint=f"/api/v1/{fake.word()}",
         feature=fake.bs(),
         operation=fake.word(),
-        action=fake.verb(),
+        action=random.choice(VERB),
         component=fake.word(),
         amount=random.randint(10, 1000),
         service=fake.company(),

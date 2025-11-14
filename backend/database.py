@@ -4,10 +4,11 @@ import os
 
 class Database:
     def __init__(self):
-        self.client = bigquery.Client()
+        self.project = 'sab-dev-nghp-jobs-4063'
         self.dataset = 'project_canary'
         self.table = 'cases'
-        self.table_ref = f'{self.dataset}.{self.table}'
+        self.table_ref = f'{self.project}.{self.dataset}.{self.table}'
+        self.client = bigquery.Client(project=self.project)
 
     def get_all_cases(self) -> List[dict]:
         query = f"SELECT * FROM `{self.table_ref}` ORDER BY created_date DESC"

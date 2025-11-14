@@ -35,10 +35,10 @@ function App() {
   }, []);
 
   const tabs = [
-    { id: 'all', label: 'All Cases', count: stats.total_cases },
-    { id: 'high-priority', label: 'High Priority', count: stats.high_priority },
-    { id: 'incidents', label: 'Incidents', count: stats.incidents },
-    { id: 'open', label: 'Open Cases', count: stats.open_cases },
+    { id: 'all', label: 'All Cases', count: stats?.total_cases ?? 0 },
+    { id: 'high-priority', label: 'High Priority', count: stats?.high_priority ?? 0 },
+    { id: 'incidents', label: 'Incidents', count: stats?.incidents ?? 0 },
+    { id: 'open', label: 'Open Cases', count: stats?.open_cases ?? 0 },
   ];
 
   const handleStatCardClick = (tabId: string) => {
