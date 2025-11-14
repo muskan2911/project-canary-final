@@ -1,17 +1,22 @@
 from src.agents.type_classifier_agent import TypeClassifierAgent
+from src.agents.product_classifier_agent import ProductClassifierAgent
 import json
 
 if __name__ == "__main__":
-    agent = TypeClassifierAgent(project_id="sab-dev-nghp-jobs-4063")
+    TypeAgent = TypeClassifierAgent(project_id="sab-dev-nghp-jobs-4063")
+    ProductAgent = ProductClassifierAgent(project_id="sab-dev-nghp-jobs-4063")
 
     sample_case = {
         "id": "C1001",
-        "name": "Login",
-        "description": "Process to login",
+        "name": "Hilton Issue",
+        "description": "Hilton Properties are not shoppable",
         "customer": "ACME",
         "emails": "User reported issue via email",
         "priority": "Medium"
     }
 
-    output = agent.classify(sample_case)
-    print("Predicted Case Type:", output)
+    type_agent_output = TypeAgent.classify(sample_case)
+    product_agent_output = ProductAgent.classify(sample_case)
+
+    print("Type:", type_agent_output)
+    print("Product:", product_agent_output)
