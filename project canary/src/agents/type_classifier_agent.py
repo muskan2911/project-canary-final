@@ -1,5 +1,5 @@
 from google.cloud import aiplatform
-from src.utils.prompts import TYPE_CLASSIFICATION_PROMPT
+from utils.prompts import TYPE_CLASSIFICATION_PROMPT
 from vertexai.preview.generative_models import GenerativeModel
 import vertexai
 
@@ -12,13 +12,8 @@ class TypeClassifierAgent:
 
     def classify(self, case):
         prompt = TYPE_CLASSIFICATION_PROMPT.format(
-            case_id=case["id"],
-            case_name=case["name"],
-            case_description=case["description"],
-            case_customer_info=case["customer"],
-            case_emails=case["emails"],
-            customer_priority=case["priority"],
+            cases=case,
         )
 
         result = self.model.generate_content(prompt)
-        return result.text.strip()
+        return result.text.replace("```json", "").replace("```", "").strip().lower()
