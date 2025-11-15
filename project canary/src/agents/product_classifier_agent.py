@@ -1,5 +1,5 @@
 from google.cloud import aiplatform
-from src.utils.prompts import PRODUCT_CLASSIFICATION_PROMPT
+from utils.prompts import PRODUCT_CLASSIFICATION_PROMPT
 from vertexai.preview.generative_models import GenerativeModel
 import vertexai
 
@@ -12,13 +12,8 @@ class ProductClassifierAgent:
 
     def classify(self, case):
         prompt = PRODUCT_CLASSIFICATION_PROMPT.format(
-            case_id=case["id"],
-            case_name=case["name"],
-            case_description=case["description"],
-            case_customer_info=case["customer"],
-            case_emails=case["emails"],
-            customer_priority=case["priority"],
+            cases=case,
         )
 
         response = self.model.generate_content(prompt)
-        return response.text.strip().lower()
+        return response.text.replace("```json", "").replace("```", "").strip().lower()
