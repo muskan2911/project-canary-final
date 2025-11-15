@@ -56,20 +56,36 @@ export function useDashboardStats() {
 export function useSimilarCases(caseId: string) {
   const [similarCases, setSimilarCases] = useState<Case[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!caseId) return;
+    if (!caseId) {
+      setError('No case ID provided');
+      setLoading(false);
+      return;
+    }
     fetchSimilar();
   }, [caseId]);
 
   async function fetchSimilar() {
-    const res = await fetch(`${API_BASE}/cases/${caseId}/similar`);
-    const data = await res.json();
-    setSimilarCases(data.similar_cases || []);
-    setLoading(false);
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await fetch(`${API_BASE}/cases/${caseId}/similar`);
+      if (!res.ok) {
+        throw new Error(`Failed to fetch related cases: ${res.status}`);
+      }
+      const data = await res.json();
+      setSimilarCases(data.similar_cases || []);
+    } catch (err: any) {
+      setError(err.message || 'Failed to fetch related cases');
+      setSimilarCases([]);
+    } finally {
+      setLoading(false);
+    }
   }
 
-  return { similarCases, loading };
+  return { similarCases, loading, error };
 }
 
 export async function fetchProducts(): Promise<string[]> {

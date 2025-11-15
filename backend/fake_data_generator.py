@@ -73,6 +73,14 @@ def generate_fake_case(index: int) -> dict:
     days_ago = random.randint(0, 30)
     created_date = datetime.now() - timedelta(days=days_ago)
 
+    # Randomly assign jira_id and snow_id to some cases
+    jira_id = None
+    snow_id = None
+    if random.random() < 0.5:  # 50% chance to have a jira_id
+        jira_id = f"PTJIRA{random.randint(10000, 99999)}"
+    if random.random() < 0.5:  # 50% chance to have a snow_id
+        snow_id = f"INC{random.randint(10000, 99999)}"
+
     return {
         'case_id': generate_case_id(index),
         'customer_name': fake.company(),
@@ -82,7 +90,9 @@ def generate_fake_case(index: int) -> dict:
         'product': product,
         'status': status,
         'geography': random.choice(GEOGRAPHIES),
-        'created_date': created_date.isoformat()
+        'created_date': created_date.isoformat(),
+        'jira_id': jira_id,
+        'snow_id': snow_id
     }
 
 def generate_batch_cases(start_index: int, count: int) -> list:

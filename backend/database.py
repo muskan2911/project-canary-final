@@ -122,12 +122,10 @@ class Database:
         }
 
     def get_similar_cases(self, case_id: str, limit: int = 3) -> List[dict]:
-        similarity_table = f'{self.dataset}.case_similarity'
         query = f"""
-            SELECT related_case_id, similarity_score
-            FROM `{similarity_table}`
-            WHERE case_id = @case_id
-            ORDER BY similarity_score DESC
+            SELECT similar_case_url
+            FROM `{self.table_ref}`
+            WHERE case_id = @case_id AND similar_case_url IS NOT NULL AND similar_case_url != ''
             LIMIT {limit}
         """
         job_config = bigquery.QueryJobConfig(
@@ -136,11 +134,93 @@ class Database:
             ]
         )
         results = [dict(row) for row in self.client.query(query, job_config=job_config).result()]
-        # Optionally fetch full case details for each related_case_id
-        similar_cases = []
-        for row in results:
-            related_case = self.get_case_by_id(row['related_case_id'])
-            if related_case:
-                related_case['similarity_score'] = row['similarity_score']
-                similar_cases.append(related_case)
-        return similar_cases
+        return results
+
+    def update_case_by_id(self, case_id: str, updates: dict) -> Optional[dict]:
+        # Build SET clause and parameters
+        set_clauses = []
+        params = [bigquery.ScalarQueryParameter("case_id", "STRING", case_id)]
+        for key, value in updates.items():
+            set_clauses.append(f"{key} = @{key}")
+            params.append(bigquery.ScalarQueryParameter(key, "STRING", value))
+        if not set_clauses:
+            return None
+        set_clause = ", ".join(set_clauses)
+        query = f"UPDATE `{self.table_ref}` SET {set_clause} WHERE case_id = @case_id"
+        job_config = bigquery.QueryJobConfig(query_parameters=params)
+        self.client.query(query, job_config=job_config).result()
+        # Return updated case
+        return self.get_case_by_id(case_id)
+
+    def add_comment_to_case(self, case_id: str, comment: str) -> Optional[dict]:
+        # Fetch current comments
+        case = self.get_case_by_id(case_id)
+        if not case:
+            return None
+        current_comments = case.get('comments') or ''
+        # Append new comment (newline separated)
+        if current_comments:
+            updated_comments = current_comments + '\n' + comment
+        else:
+            updated_comments = comment
+        # Update in DB
+        query = f"UPDATE `{self.table_ref}` SET comments = @comments WHERE case_id = @case_id"
+        job_config = bigquery.QueryJobConfig(query_parameters=[
+            bigquery.ScalarQueryParameter("comments", "STRING", updated_comments),
+            bigquery.ScalarQueryParameter("case_id", "STRING", case_id)
+        ])
+        self.client.query(query, job_config=job_config).result()
+        return self.get_case_by_id(case_id)
+
+    def create_track(self, track_name: str) -> dict:
+        track_table = f'{self.project}.{self.dataset}.track'
+        query = f"""
+            INSERT INTO `{track_table}` (track_id, track_name)
+            VALUES (GENERATE_UUID(), @track_name)
+        """
+        job_config = bigquery.QueryJobConfig(
+            query_parameters=[bigquery.ScalarQueryParameter("track_name", "STRING", track_name)]
+        )
+        self.client.query(query, job_config=job_config).result()
+        # Fetch the newly created track
+        query = f"SELECT * FROM `{track_table}` WHERE track_name = @track_name ORDER BY track_id DESC LIMIT 1"
+        job_config = bigquery.QueryJobConfig(
+            query_parameters=[bigquery.ScalarQueryParameter("track_name", "STRING", track_name)]
+        )
+        result = list(self.client.query(query, job_config=job_config).result())
+        return dict(result[0]) if result else {}
+
+    def delete_track(self, track_id: str):
+        track_table = f'{self.project}.{self.dataset}.track'
+        query = f"DELETE FROM `{track_table}` WHERE track_id = @track_id"
+        job_config = bigquery.QueryJobConfig(
+            query_parameters=[bigquery.ScalarQueryParameter("track_id", "STRING", track_id)]
+        )
+        self.client.query(query, job_config=job_config).result()
+
+    def list_tracks(self) -> list:
+        track_table = f'{self.project}.{self.dataset}.track'
+        query = f"SELECT * FROM `{track_table}` ORDER BY track_id DESC"
+        return [dict(row) for row in self.client.query(query).result()]
+
+    def assign_track_to_case(self, track_id: str, case_id: str):
+        map_table = f'{self.project}.{self.dataset}.case_track_map'
+        query = f"""
+            INSERT INTO `{map_table}` (case_id, track_id)
+            VALUES (@case_id, @track_id)
+        """
+        job_config = bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter("case_id", "STRING", case_id),
+                bigquery.ScalarQueryParameter("track_id", "STRING", track_id)
+            ]
+        )
+        self.client.query(query, job_config=job_config).result()
+
+    def get_cases_for_track(self, track_id: str) -> list:
+        map_table = f'{self.project}.{self.dataset}.case_track_map'
+        query = f"SELECT case_id FROM `{map_table}` WHERE track_id = @track_id"
+        job_config = bigquery.QueryJobConfig(
+            query_parameters=[bigquery.ScalarQueryParameter("track_id", "STRING", track_id)]
+        )
+        return [dict(row) for row in self.client.query(query, job_config=job_config).result()]

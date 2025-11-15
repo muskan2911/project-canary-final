@@ -13,6 +13,8 @@ export interface Case {
   geography?: string;
   created_date: string;
   updated_date: string;
+  jira_id?: string;
+  snow_id?: string;
 }
 
 export interface SimilarCase {

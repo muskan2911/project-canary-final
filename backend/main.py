@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Request, Body
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional, List
 from pydantic import BaseModel
@@ -38,6 +38,9 @@ class DashboardStats(BaseModel):
     high_priority: int
     incidents: int
     open_cases: int
+
+class TrackCreate(BaseModel):
+    track_name: str
 
 def classify_and_process_case(case_data: dict) -> dict:
     case_type = classifier.classify_type(case_data['description'])
@@ -191,6 +194,19 @@ async def get_case(case_id: str):
         case = db.get_case_by_id(case_id)
         if not case:
             raise HTTPException(status_code=404, detail="Case not found")
+        similar_cases = db.get_similar_cases(case_id, limit=3)
+        # Fetch details for each similar_case_url (support multiple IDs)
+        related_cases = []
+        for item in similar_cases:
+            url = item.get("similar_case_url")
+            if url:
+                for related_id in url.split(","):
+                    related_id = related_id.strip()
+                    if related_id:
+                        related_case = db.get_case_by_id(related_id)
+                        if related_case:
+                            related_cases.append(related_case)
+        case['related_cases'] = related_cases
         return case
     except HTTPException:
         raise
@@ -200,8 +216,22 @@ async def get_case(case_id: str):
 @app.get("/api/cases/{case_id}/similar")
 async def get_similar_cases(case_id: str):
     try:
-        similar = db.get_similar_cases(case_id, limit=3)
-        return {"similar_cases": similar, "count": len(similar)}
+        case = db.get_case_by_id(case_id)
+        if not case:
+            raise HTTPException(status_code=404, detail="Case not found")
+        similar_cases = db.get_similar_cases(case_id, limit=3)
+        # Fetch details for each similar_case_url (support multiple IDs)
+        related_cases = []
+        for item in similar_cases:
+            url = item.get("similar_case_url")
+            if url:
+                for related_id in url.split(","):
+                    related_id = related_id.strip()
+                    if related_id:
+                        related_case = db.get_case_by_id(related_id)
+                        if related_case:
+                            related_cases.append(related_case)
+        return {"similar_cases": related_cases, "count": len(related_cases)}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -222,6 +252,30 @@ async def create_case(case: CaseCreate):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.put("/api/cases/{case_id}")
+async def update_case(case_id: str, request: Request):
+    try:
+        updates = await request.json()
+        updated_case = db.update_case_by_id(case_id, updates)
+        if not updated_case:
+            raise HTTPException(status_code=404, detail="Case not found or no fields to update")
+        return updated_case
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/cases/{case_id}/comment")
+async def add_comment(case_id: str, body: dict = Body(...)):
+    try:
+        comment = body.get("comment")
+        if not comment:
+            raise HTTPException(status_code=400, detail="Comment is required")
+        updated_case = db.add_comment_to_case(case_id, comment)
+        if not updated_case:
+            raise HTTPException(status_code=404, detail="Case not found")
+        return updated_case
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/api/products")
 async def get_products():
     try:
@@ -238,6 +292,53 @@ async def get_types():
 @app.get("/api/priorities")
 async def get_priorities():
     return {"priorities": ["Low", "Medium", "High", "Critical"]}
+
+@app.post("/api/tracks")
+async def create_track(track: TrackCreate):
+    try:
+        new_track = db.create_track(track.track_name)
+        return new_track
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/tracks/{track_id}")
+async def delete_track(track_id: str):
+    try:
+        db.delete_track(track_id)
+        return {"message": "Track deleted"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/tracks")
+async def list_tracks():
+    try:
+        tracks = db.list_tracks()
+        return tracks
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/tracks/{track_id}/assign-random")
+async def assign_track_random(track_id: str):
+    try:
+        cases = db.get_all_cases()
+        import random
+        if not cases:
+            raise HTTPException(status_code=404, detail="No cases available")
+        # Assign to 5 random cases for testing
+        selected_cases = random.sample(cases, min(5, len(cases)))
+        for case in selected_cases:
+            db.assign_track_to_case(track_id, case['case_id'])
+        return {"assigned_case_ids": [case['case_id'] for case in selected_cases]}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/tracks/{track_id}/cases")
+async def get_cases_for_track(track_id: str):
+    try:
+        case_maps = db.get_cases_for_track(track_id)
+        return case_maps
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn

@@ -64,6 +64,29 @@ export function CaseTable({ cases, onSelectCase, selectedCaseId }: CaseTableProp
     });
   };
 
+  // Check if cases have more than just case_id
+  const hasFullData = cases.length > 0 && Object.keys(cases[0]).length > 1;
+
+  if (!hasFullData) {
+    // Render simplified table with only case_id
+    return (
+      <table className="min-w-full border">
+        <thead>
+          <tr>
+            <th className="border px-2 py-1">Case ID</th>
+          </tr>
+        </thead>
+        <tbody>
+          {cases.map((c) => (
+            <tr key={c.case_id}>
+              <td className="border px-2 py-1">{c.case_id}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    );
+  }
+
   if (cases.length === 0) {
     return (
       <div className="bg-white rounded-lg shadow-sm p-12 text-center">
@@ -101,6 +124,9 @@ export function CaseTable({ cases, onSelectCase, selectedCaseId }: CaseTableProp
                 Created
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Jira/Snow ID
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Actions
               </th>
             </tr>
@@ -114,7 +140,14 @@ export function CaseTable({ cases, onSelectCase, selectedCaseId }: CaseTableProp
                 }`}
               >
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                  {caseItem.case_id}
+                  <a
+                    href={`/case/${caseItem.case_id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-700 underline hover:text-blue-900"
+                  >
+                    {caseItem.case_id}
+                  </a>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                   {caseItem.customer_name}
@@ -151,6 +184,34 @@ export function CaseTable({ cases, onSelectCase, selectedCaseId }: CaseTableProp
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   {formatDate(caseItem.created_date)}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  {caseItem.jira_id || caseItem.snow_id ? (
+                    <>
+                      {caseItem.jira_id && (
+                        <a
+                          href={`https://jira.example.com/browse/${caseItem.jira_id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block text-blue-700 font-mono underline hover:text-blue-900"
+                        >
+                          {caseItem.jira_id}
+                        </a>
+                      )}
+                      {caseItem.snow_id && (
+                        <a
+                          href={`https://snow.example.com/incident/${caseItem.snow_id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block text-purple-700 font-mono underline hover:text-purple-900"
+                        >
+                          {caseItem.snow_id}
+                        </a>
+                      )}
+                    </>
+                  ) : (
+                    <span className="text-gray-400">-</span>
+                  )}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   <button

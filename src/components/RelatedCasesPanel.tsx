@@ -1,6 +1,7 @@
 import { X, Link2, TrendingUp } from 'lucide-react';
 import { Case, SimilarCase } from '../types/case';
 import { useSimilarCases } from '../hooks/useCases';
+import { Link } from 'react-router-dom';
 
 interface RelatedCasesPanelProps {
   selectedCase: Case;
@@ -8,7 +9,10 @@ interface RelatedCasesPanelProps {
 }
 
 export function RelatedCasesPanel({ selectedCase, onClose }: RelatedCasesPanelProps) {
-  const { similarCases, loading } = useSimilarCases(selectedCase.id);
+  const caseId = selectedCase.case_id;
+  const { similarCases, loading, error } = useSimilarCases(caseId);
+  const casesArray = Array.isArray(similarCases) ? similarCases : [];
+  const relatedCount = casesArray.length;
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -48,7 +52,21 @@ export function RelatedCasesPanel({ selectedCase, onClose }: RelatedCasesPanelPr
         </div>
         <div className="space-y-2">
           <p className="text-sm opacity-90">Case ID</p>
-          <p className="text-lg font-semibold">{selectedCase.case_id}</p>
+          <p className="font-mono text-lg font-semibold">{selectedCase.case_id}</p>
+          {/* Show Jira ID if present */}
+          {selectedCase.jira_id && (
+            <div>
+              <p className="text-sm opacity-90">Jira ID</p>
+              <p className="font-mono text-blue-700">{selectedCase.jira_id}</p>
+            </div>
+          )}
+          {/* Show Snow ID if present */}
+          {selectedCase.snow_id && (
+            <div>
+              <p className="text-sm opacity-90">Snow ID</p>
+              <p className="font-mono text-purple-700">{selectedCase.snow_id}</p>
+            </div>
+          )}
         </div>
       </div>
 
@@ -135,45 +153,56 @@ export function RelatedCasesPanel({ selectedCase, onClose }: RelatedCasesPanelPr
           <div className="border-t pt-6">
             <div className="flex items-center gap-2 mb-4">
               <Link2 className="w-5 h-5 text-blue-600" />
-              <h3 className="font-semibold text-gray-900">Related Cases</h3>
+              <h3 className="font-semibold text-gray-900">
+                Related Cases{relatedCount > 0 ? ` (${relatedCount})` : ''}
+              </h3>
             </div>
-
-            {loading ? (
+            {/* Guard for missing caseId */}
+            {!caseId ? (
+              <div className="text-center py-8 text-red-600">
+                <p>No case ID available for related cases.</p>
+              </div>
+            ) : loading ? (
               <div className="text-center py-8">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
               </div>
-            ) : similarCases.length > 0 ? (
+            ) : error ? (
+              <div className="text-center py-8 text-red-600">
+                <p>{error}</p>
+              </div>
+            ) : casesArray.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <p>No related cases found.</p>
+              </div>
+            ) : (
               <div className="space-y-3">
-                {similarCases.map((similar: SimilarCase) => (
+                {casesArray.map((similar, idx) => (
                   <div
-                    key={similar.related_case_id}
-                    className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition-colors"
+                    key={similar.case_id || idx}
+                    className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition-colors mb-2"
                   >
                     <div className="flex items-start justify-between mb-2">
-                      <p className="font-medium text-gray-900">{similar.cases.case_id}</p>
-                      <div className="flex items-center gap-1 text-xs text-green-600 bg-green-50 px-2 py-1 rounded">
-                        <TrendingUp className="w-3 h-3" />
-                        {(similar.similarity_score * 100).toFixed(0)}%
-                      </div>
+                      <Link
+                        to={`/case/${similar.case_id}`}
+                        className="font-medium text-blue-600 hover:underline"
+                      >
+                        {similar.case_id || 'Unknown Case ID'}
+                      </Link>
                     </div>
-                    <p className="text-sm text-gray-600 mb-2">{similar.cases.customer_name}</p>
+                    <p className="text-sm text-gray-600 mb-2">{similar.customer_name || 'Unknown Customer'}</p>
                     <p className="text-xs text-gray-500 line-clamp-2">
-                      {similar.cases.description}
+                      {similar.description || 'No description available.'}
                     </p>
                     <div className="flex gap-2 mt-3">
                       <span className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded">
-                        {similar.cases.type}
+                        {similar.type || 'Unknown'}
                       </span>
-                      <span className={`text-xs px-2 py-1 rounded ${getPriorityColor(similar.cases.priority)} bg-opacity-10`}>
-                        {similar.cases.priority}
+                      <span className={`text-xs px-2 py-1 rounded ${getPriorityColor(similar.priority)} bg-opacity-10`}>
+                        {similar.priority || 'Unknown'}
                       </span>
                     </div>
                   </div>
                 ))}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-gray-500">
-                <p className="text-sm">No similar cases found</p>
               </div>
             )}
           </div>
